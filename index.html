@@ -1,130 +1,411 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>EsthYes — Pricing Reality Check</title>
-  <style>
-    body {
-      font-family: Arial;
-      background: #f4f4f4;
-      max-width: 700px;
-      margin: auto;
-      padding: 40px;
-    }
-    .card {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      margin-bottom: 20px;
-    }
-    input {
-      width: 100%;
-      padding: 12px;
-      margin-bottom: 15px;
-    }
-    button {
-      padding: 15px;
-      width: 100%;
-      background: black;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      font-size: 16px;
-      margin-top: 10px;
-    }
-    .result {
-      font-size: 20px;
-      font-weight: bold;
-      margin-bottom: 10px;
-    }
-    .small {
-      font-size: 14px;
-      color: #666;
-    }
-  </style>
-</head>
+import React, { useMemo, useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DollarSign, TrendingUp, AlertTriangle, Calculator, Scissors, Target, Plus, Sparkles } from "lucide-react";
 
-<body>
+const roundMoney = (n: number) => Math.round((Number(n) || 0) * 100) / 100;
+const safeNum = (v: string | number) => Number(v) || 0;
+const roundRecommended = (n: number) => Math.max(0, Math.round(n / 5) * 5);
 
-<h1>Are You Undercharging?</h1>
-<p>Check if your service is actually making you money</p>
-
-<div class="card">
-  <label>What do you charge?</label>
-  <input id="price" value="85">
-
-  <label>How long does it take? (minutes)</label>
-  <input id="minutes" value="60">
-
-  <label>Product cost per client</label>
-  <input id="product" value="8">
-
-  <label>Monthly overhead</label>
-  <input id="overhead" value="1200">
-
-  <label>Clients per week</label>
-  <input id="clients" value="15">
-
-  <button onclick="calc()">Check My Pricing</button>
-</div>
-
-<div class="card">
-  <div class="result" id="headline"></div>
-  <div class="result" id="hourly"></div>
-  <div class="result" id="range"></div>
-  <div class="result" id="monthly"></div>
-  <div class="result" id="whatif"></div>
-
-  <p class="small">
-    Estimates include overhead, product cost, and typical booking gaps (~75% utilization).
-  </p>
-</div>
-
-<script>
-function calc() {
-  let price = Number(document.getElementById("price").value);
-  let minutes = Number(document.getElementById("minutes").value);
-  let product = Number(document.getElementById("product").value);
-  let overhead = Number(document.getElementById("overhead").value);
-  let weeklyClients = Number(document.getElementById("clients").value);
-
-  let monthlyClients = weeklyClients * 4;
-  let hours = minutes / 60;
-
-  let overheadPer = overhead / monthlyClients;
-  let cost = product + overheadPer;
-
-  let bookedHourly = (price - cost) / hours;
-  let realHourly = bookedHourly * 0.75;
-
-  let recommended = cost + (50 * hours * 1.3);
-  let low = Math.ceil(recommended / 5) * 5;
-  let high = Math.ceil((recommended * 1.15) / 5) * 5;
-
-  let gap = low - price;
-
-  let monthlyIncome = realHourly * hours * monthlyClients;
-
-  let newHourly = ((low - cost) / hours) * 0.75;
-  let newMonthly = newHourly * hours * monthlyClients;
-
-  document.getElementById("headline").innerText =
-    gap > 0 ? "You may be undercharging" : "Your pricing looks strong";
-
-  document.getElementById("hourly").innerText =
-    "Real earnings: $" + realHourly.toFixed(0) + "/hr";
-
-  document.getElementById("range").innerText =
-    "Stronger range: $" + low + "–$" + high;
-
-  document.getElementById("monthly").innerText =
-    "Monthly: $" + monthlyIncome.toFixed(0);
-
-  document.getElementById("whatif").innerText =
-    "If you charged $" + low +
-    ": $" + newHourly.toFixed(0) + "/hr → $" +
-    newMonthly.toFixed(0) + "/month";
+function getStatus(currentPrice: number, recommendedPrice: number) {
+  const diff = recommendedPrice - currentPrice;
+  if (diff > 5) return { label: "Underpriced", tone: "destructive" as const };
+  if (diff < -5) return { label: "Premium", tone: "secondary" as const };
+  return { label: "Optimized", tone: "default" as const };
 }
-</script>
 
-</body>
-</html>
+function calcServiceMetrics({
+  monthlyOverhead,
+  targetIncome,
+  hoursPerWeek,
+  weeksPerMonth,
+  service,
+}: {
+  monthlyOverhead: number;
+  targetIncome: number;
+  hoursPerWeek: number;
+  weeksPerMonth: number;
+  service: {
+    name: string;
+    price: number;
+    duration: number;
+    productCost: number;
+    clientsPerWeek: number;
+  };
+}) {
+  const hoursPerMonth = Math.max(0.1, hoursPerWeek * weeksPerMonth);
+  const serviceTimeHours = Math.max(0.1, service.duration / 60);
+  const clientsPerMonth = service.clientsPerWeek * weeksPerMonth;
+  const overheadPerHour = monthlyOverhead / hoursPerMonth;
+  const overheadPerService = overheadPerHour * serviceTimeHours;
+  const totalCost = service.productCost + overheadPerService;
+  const profitPerService = service.price - totalCost;
+  const realHourlyRate = profitPerService / serviceTimeHours;
+  const monthlyIncome = profitPerService * clientsPerMonth;
+  const requiredHourlyRate = targetIncome / hoursPerMonth;
+  const requiredProfitPerService = requiredHourlyRate * serviceTimeHours;
+  const recommendedPrice = roundRecommended(requiredProfitPerService + totalCost);
+  const underpricingAmount = Math.max(0, recommendedPrice - service.price);
+  const lostRevenueMonthly = underpricingAmount * clientsPerMonth;
+  const status = getStatus(service.price, recommendedPrice);
+
+  return {
+    hoursPerMonth: roundMoney(hoursPerMonth),
+    serviceTimeHours: roundMoney(serviceTimeHours),
+    clientsPerMonth: roundMoney(clientsPerMonth),
+    overheadPerHour: roundMoney(overheadPerHour),
+    overheadPerService: roundMoney(overheadPerService),
+    totalCost: roundMoney(totalCost),
+    profitPerService: roundMoney(profitPerService),
+    realHourlyRate: roundMoney(realHourlyRate),
+    monthlyIncome: roundMoney(monthlyIncome),
+    requiredHourlyRate: roundMoney(requiredHourlyRate),
+    recommendedPrice: roundMoney(recommendedPrice),
+    underpricingAmount: roundMoney(recommendedPrice - service.price),
+    lostRevenueMonthly: roundMoney(lostRevenueMonthly),
+    status,
+  };
+}
+
+function MetricCard({ title, value, subtext, icon: Icon }: { title: string; value: string; subtext?: string; icon: any }) {
+  return (
+    <Card className="rounded-3xl border-0 shadow-sm">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm text-muted-foreground">{title}</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight">{value}</p>
+            {subtext ? <p className="mt-1 text-xs text-muted-foreground">{subtext}</p> : null}
+          </div>
+          <div className="rounded-2xl bg-muted p-3">
+            <Icon className="h-5 w-5" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function EstheticianPricingApp() {
+  const [baseline, setBaseline] = useState({
+    monthlyOverhead: 1200,
+    targetIncome: 8000,
+    hoursPerWeek: 30,
+    weeksPerMonth: 4.3,
+  });
+
+  const [serviceForm, setServiceForm] = useState({
+    name: "Signature Facial",
+    price: 90,
+    duration: 60,
+    productCost: 14,
+    clientsPerWeek: 10,
+  });
+
+  const [services, setServices] = useState([
+    { name: "Signature Facial", price: 90, duration: 60, productCost: 14, clientsPerWeek: 10 },
+    { name: "Chemical Peel", price: 125, duration: 45, productCost: 18, clientsPerWeek: 5 },
+  ]);
+
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const activeService = services[selectedIndex] || serviceForm;
+
+  const activeMetrics = useMemo(
+    () =>
+      calcServiceMetrics({
+        ...baseline,
+        service: activeService,
+      }),
+    [baseline, activeService]
+  );
+
+  const allServiceMetrics = useMemo(() => {
+    return services.map((service) => ({
+      service,
+      metrics: calcServiceMetrics({ ...baseline, service }),
+    }));
+  }, [baseline, services]);
+
+  const totals = useMemo(() => {
+    const projected = allServiceMetrics.reduce((sum, item) => sum + item.metrics.monthlyIncome, 0);
+    const lost = allServiceMetrics.reduce((sum, item) => sum + Math.max(0, item.metrics.lostRevenueMonthly), 0);
+    const current = roundMoney(projected);
+    const gap = roundMoney(baseline.targetIncome - current);
+    const targetProgress = baseline.targetIncome > 0 ? Math.min(100, Math.max(0, (current / baseline.targetIncome) * 100)) : 0;
+    return { projected: current, lost, gap, targetProgress };
+  }, [allServiceMetrics, baseline.targetIncome]);
+
+  const addService = () => {
+    if (!serviceForm.name.trim()) return;
+    setServices((prev) => [...prev, { ...serviceForm }]);
+    setSelectedIndex(services.length);
+  };
+
+  const applyRecommendedPrice = (index: number) => {
+    setServices((prev) =>
+      prev.map((service, i) => {
+        if (i !== index) return service;
+        const recommended = calcServiceMetrics({ ...baseline, service }).recommendedPrice;
+        return { ...service, price: recommended };
+      })
+    );
+  };
+
+  const simulateAllIncrease = (delta: number) => {
+    setServices((prev) => prev.map((service) => ({ ...service, price: roundMoney(service.price + delta) })));
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white p-4 md:p-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full border bg-white px-3 py-1 text-xs text-muted-foreground shadow-sm">
+              <Sparkles className="h-3.5 w-3.5" />
+              Pricing and income decision tool
+            </div>
+            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Esthetician Pricing Optimizer</h1>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground md:text-base">
+              A clean way to see what each service is actually earning, where you are undercharging, and how price changes affect monthly income.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" className="rounded-2xl" onClick={() => simulateAllIncrease(5)}>
+              +$5 all services
+            </Button>
+            <Button className="rounded-2xl" onClick={() => simulateAllIncrease(10)}>
+              +$10 all services
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <div className="space-y-6">
+            <Card className="rounded-3xl border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-xl">Business baseline</CardTitle>
+                <CardDescription>Set this once, then use it across every service.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Monthly overhead</Label>
+                  <Input type="number" value={baseline.monthlyOverhead} onChange={(e) => setBaseline((p) => ({ ...p, monthlyOverhead: safeNum(e.target.value) }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Target monthly income</Label>
+                  <Input type="number" value={baseline.targetIncome} onChange={(e) => setBaseline((p) => ({ ...p, targetIncome: safeNum(e.target.value) }))} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Hours per week</Label>
+                    <Input type="number" value={baseline.hoursPerWeek} onChange={(e) => setBaseline((p) => ({ ...p, hoursPerWeek: safeNum(e.target.value) }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Weeks per month</Label>
+                    <Input type="number" step="0.1" value={baseline.weeksPerMonth} onChange={(e) => setBaseline((p) => ({ ...p, weeksPerMonth: safeNum(e.target.value) }))} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-3xl border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-xl">Add or update a service</CardTitle>
+                <CardDescription>Keep the form simple so it feels usable, not like accounting software.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Service name</Label>
+                  <Input value={serviceForm.name} onChange={(e) => setServiceForm((p) => ({ ...p, name: e.target.value }))} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Price</Label>
+                    <Input type="number" value={serviceForm.price} onChange={(e) => setServiceForm((p) => ({ ...p, price: safeNum(e.target.value) }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Duration (minutes)</Label>
+                    <Input type="number" value={serviceForm.duration} onChange={(e) => setServiceForm((p) => ({ ...p, duration: safeNum(e.target.value) }))} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Product cost per client</Label>
+                    <Input type="number" value={serviceForm.productCost} onChange={(e) => setServiceForm((p) => ({ ...p, productCost: safeNum(e.target.value) }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Clients per week</Label>
+                    <Input type="number" value={serviceForm.clientsPerWeek} onChange={(e) => setServiceForm((p) => ({ ...p, clientsPerWeek: safeNum(e.target.value) }))} />
+                  </div>
+                </div>
+                <Button className="w-full rounded-2xl" onClick={addService}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Save service
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <MetricCard title="Projected monthly income" value={`$${totals.projected.toLocaleString()}`} subtext="Across all saved services" icon={DollarSign} />
+              <MetricCard title="Target monthly income" value={`$${baseline.targetIncome.toLocaleString()}`} subtext={`Gap: ${totals.gap > 0 ? "-" : "+"}$${Math.abs(totals.gap).toLocaleString()}`} icon={Target} />
+              <MetricCard title="Lost revenue" value={`$${totals.lost.toLocaleString()}`} subtext="From underpriced services" icon={AlertTriangle} />
+              <MetricCard title="Hours per month" value={`${roundMoney(baseline.hoursPerWeek * baseline.weeksPerMonth)}`} subtext="Used for overhead and income math" icon={Calculator} />
+            </div>
+
+            <Card className="rounded-3xl border-0 shadow-sm">
+              <CardContent className="p-5 md:p-6">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Target progress</p>
+                    <h2 className="mt-1 text-2xl font-semibold tracking-tight">{Math.round(totals.targetProgress)}% of income goal</h2>
+                  </div>
+                  <div className="w-full md:max-w-sm">
+                    <Progress value={totals.targetProgress} className="h-3" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid gap-6 2xl:grid-cols-[1.2fr_0.8fr]">
+              <Card className="rounded-3xl border-0 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-xl">Service dashboard</CardTitle>
+                  <CardDescription>Select a service to view detailed pricing logic and recommendations.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {allServiceMetrics.map((item, index) => (
+                      <button
+                        key={`${item.service.name}-${index}`}
+                        className={`w-full rounded-2xl border p-4 text-left transition hover:shadow-sm ${selectedIndex === index ? "border-slate-900 bg-slate-50" : "bg-white"}`}
+                        onClick={() => setSelectedIndex(index)}
+                      >
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Scissors className="h-4 w-4 text-muted-foreground" />
+                              <p className="font-medium">{item.service.name}</p>
+                            </div>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              ${item.service.price} • {item.service.duration} min • {item.service.clientsPerWeek}/week
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant={item.metrics.status.tone}>{item.metrics.status.label}</Badge>
+                            <div className="rounded-xl bg-muted px-3 py-2 text-sm font-medium">
+                              Profit ${item.metrics.profitPerService}
+                            </div>
+                            <div className="rounded-xl bg-muted px-3 py-2 text-sm font-medium">
+                              ${item.metrics.realHourlyRate}/hr
+                            </div>
+                            <Button variant="outline" className="rounded-xl" onClick={(e) => { e.stopPropagation(); applyRecommendedPrice(index); }}>
+                              Apply recommended
+                            </Button>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-3xl border-0 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-xl">Selected service insight</CardTitle>
+                  <CardDescription>Keep the explanation short and money-focused.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  <div className="rounded-2xl border bg-slate-50 p-4">
+                    <p className="text-sm text-muted-foreground">Primary takeaway</p>
+                    <p className="mt-2 text-lg font-semibold leading-snug">
+                      {activeMetrics.underpricingAmount > 5
+                        ? `You are undercharging ${activeService.name} by about $${Math.max(0, activeMetrics.underpricingAmount)} per service.`
+                        : `Your current pricing for ${activeService.name} is close to target.`}
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {activeMetrics.underpricingAmount > 5
+                        ? `At your current volume, that is about $${Math.max(0, activeMetrics.lostRevenueMonthly).toLocaleString()} in missed monthly income.`
+                        : `This service is not the main pricing problem in the business right now.`}
+                    </p>
+                  </div>
+
+                  <Tabs defaultValue="overview" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3 rounded-2xl">
+                      <TabsTrigger value="overview">Overview</TabsTrigger>
+                      <TabsTrigger value="pricing">Pricing</TabsTrigger>
+                      <TabsTrigger value="math">Math</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="overview" className="mt-4 space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-2xl bg-muted p-4">
+                          <p className="text-xs text-muted-foreground">Real hourly earnings</p>
+                          <p className="mt-1 text-xl font-semibold">${activeMetrics.realHourlyRate}/hr</p>
+                        </div>
+                        <div className="rounded-2xl bg-muted p-4">
+                          <p className="text-xs text-muted-foreground">Monthly income</p>
+                          <p className="mt-1 text-xl font-semibold">${activeMetrics.monthlyIncome}</p>
+                        </div>
+                      </div>
+                      <div className="rounded-2xl bg-muted p-4">
+                        <p className="text-xs text-muted-foreground">Recommended price</p>
+                        <p className="mt-1 text-2xl font-semibold">${activeMetrics.recommendedPrice}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">Based on your saved overhead, target income, and schedule.</p>
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="pricing" className="mt-4 space-y-3">
+                      <div className="flex items-center justify-between rounded-2xl bg-muted p-4">
+                        <span className="text-sm text-muted-foreground">Current price</span>
+                        <span className="font-semibold">${activeService.price}</span>
+                      </div>
+                      <div className="flex items-center justify-between rounded-2xl bg-muted p-4">
+                        <span className="text-sm text-muted-foreground">Recommended price</span>
+                        <span className="font-semibold">${activeMetrics.recommendedPrice}</span>
+                      </div>
+                      <div className="flex items-center justify-between rounded-2xl bg-muted p-4">
+                        <span className="text-sm text-muted-foreground">Monthly lost revenue</span>
+                        <span className="font-semibold">${Math.max(0, activeMetrics.lostRevenueMonthly)}</span>
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="math" className="mt-4 space-y-3 text-sm">
+                      <div className="rounded-2xl bg-muted p-4">
+                        <p>Overhead per service: <span className="font-semibold">${activeMetrics.overheadPerService}</span></p>
+                        <p>Total cost per service: <span className="font-semibold">${activeMetrics.totalCost}</span></p>
+                        <p>Profit per service: <span className="font-semibold">${activeMetrics.profitPerService}</span></p>
+                        <p>Clients per month: <span className="font-semibold">{activeMetrics.clientsPerMonth}</span></p>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button className="w-full rounded-2xl">See upgrade path</Button>
+                    </DialogTrigger>
+                    <DialogContent className="rounded-3xl">
+                      <DialogHeader>
+                        <DialogTitle>How this becomes a SaaS</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-3 text-sm text-muted-foreground">
+                        <p>Free plan: 1 saved service, pricing check, and one recommendation.</p>
+                        <p>Pro plan: unlimited services, weekly income tracking, missed revenue alerts, and pricing scenario planning.</p>
+                        <p>Next sticky feature: weekly target tracking so they come back regularly, not once.</p>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

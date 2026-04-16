@@ -302,7 +302,7 @@
         <div>
           <div class="badge">Pricing and income optimizer</div>
           <h1>Esthetician Pricing Optimizer</h1>
-          <div class="sub">See what each service is really earning, where you are undercharging, and how price changes affect monthly income without making the screen feel overwhelming.</div>
+          <div class="sub">A calmer workspace for pricing decisions. Show the big picture first, then let users drill into services, calculations, and recommendations only when they need them.</div>
         </div>
         <div class="actions">
           <button class="btn-light" id="raise5">Raise all by $5</button>
@@ -311,137 +311,216 @@
       </div>
     </div>
 
-    <div class="layout">
-      <div class="left-col">
-        <div class="card section">
-          <h2>Business baseline</h2>
-          <div class="section-desc">These numbers are entered once and used across every service.</div>
+    <div class="card section" style="margin-bottom:20px; padding:12px;">
+      <div class="actions" style="gap:12px;">
+        <button class="btn-dark" id="tabOverview">Overview</button>
+        <button class="btn-light" id="tabServices">Services</button>
+        <button class="btn-light" id="tabCalculator">Calculator</button>
+        <button class="btn-light" id="tabInsights">Insights</button>
+      </div>
+    </div>
 
-          <div class="field">
-            <label for="monthlyOverhead">Monthly overhead</label>
-            <input id="monthlyOverhead" type="number" value="1200" />
-          </div>
-          <div class="field">
-            <label for="targetIncome">Target monthly income</label>
-            <input id="targetIncome" type="number" value="8000" />
-          </div>
-          <div class="grid-2">
-            <div class="field">
-              <label for="hoursPerWeek">Hours per week</label>
-              <input id="hoursPerWeek" type="number" value="30" />
-            </div>
-            <div class="field">
-              <label for="weeksPerMonth">Weeks per month</label>
-              <input id="weeksPerMonth" type="number" step="0.1" value="4.3" />
-            </div>
-          </div>
+    <div id="viewOverview">
+      <div class="metrics" style="margin-bottom:20px;">
+        <div class="card metric">
+          <div class="metric-label">Projected monthly income</div>
+          <div class="metric-value" id="projectedIncome">$0</div>
+          <div class="metric-sub">Across all saved services</div>
         </div>
-
-        <div class="card section">
-          <h2>Add a service</h2>
-          <div class="section-desc">Fast enough to use in real life, not like bookkeeping software.</div>
-
-          <div class="field">
-            <label for="serviceName">Service name</label>
-            <input id="serviceName" type="text" value="Signature Facial" />
-          </div>
-          <div class="grid-2">
-            <div class="field">
-              <label for="servicePrice">Price</label>
-              <input id="servicePrice" type="number" value="90" />
-            </div>
-            <div class="field">
-              <label for="serviceDuration">Duration (minutes)</label>
-              <input id="serviceDuration" type="number" value="60" />
-            </div>
-          </div>
-          <div class="grid-2">
-            <div class="field">
-              <label for="productCost">Product cost per client</label>
-              <input id="productCost" type="number" value="14" />
-            </div>
-            <div class="field">
-              <label for="clientsPerWeek">Clients per week</label>
-              <input id="clientsPerWeek" type="number" value="10" />
-            </div>
-          </div>
-          <div style="margin-top:18px;">
-            <button class="btn-dark" id="saveService" style="width:100%;">Save service</button>
-          </div>
+        <div class="card metric">
+          <div class="metric-label">Target income</div>
+          <div class="metric-value" id="targetIncomeMetric">$0</div>
+          <div class="metric-sub" id="targetGap">Gap: $0</div>
+        </div>
+        <div class="card metric">
+          <div class="metric-label">Lost revenue</div>
+          <div class="metric-value" id="lostRevenue">$0</div>
+          <div class="metric-sub">Money being left on the table</div>
+        </div>
+        <div class="card metric">
+          <div class="metric-label">Hours per month</div>
+          <div class="metric-value" id="hoursPerMonthMetric">0</div>
+          <div class="metric-sub">Used to calculate true earnings</div>
         </div>
       </div>
 
-      <div class="right-col">
-        <div class="metrics">
-          <div class="card metric">
-            <div class="metric-label">Projected monthly income</div>
-            <div class="metric-value" id="projectedIncome">$0</div>
-            <div class="metric-sub">Across all saved services</div>
+      <div class="layout">
+        <div class="left-col">
+          <div class="card section">
+            <h2>Business baseline</h2>
+            <div class="section-desc">These numbers are entered once and drive every recommendation.</div>
+            <div class="field">
+              <label for="monthlyOverhead">Monthly overhead</label>
+              <input id="monthlyOverhead" type="number" value="1200" />
+            </div>
+            <div class="field">
+              <label for="targetIncome">Target monthly income</label>
+              <input id="targetIncome" type="number" value="8000" />
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label for="hoursPerWeek">Hours per week</label>
+                <input id="hoursPerWeek" type="number" value="30" />
+              </div>
+              <div class="field">
+                <label for="weeksPerMonth">Weeks per month</label>
+                <input id="weeksPerMonth" type="number" step="0.1" value="4.3" />
+              </div>
+            </div>
           </div>
-          <div class="card metric">
-            <div class="metric-label">Target income</div>
-            <div class="metric-value" id="targetIncomeMetric">$0</div>
-            <div class="metric-sub" id="targetGap">Gap: $0</div>
+        </div>
+
+        <div class="right-col">
+          <div class="card section">
+            <h2>Target progress</h2>
+            <div class="section-desc" id="targetProgressText">0% of your monthly income goal is being covered by current pricing and volume.</div>
+            <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
           </div>
-          <div class="card metric">
-            <div class="metric-label">Lost revenue</div>
-            <div class="metric-value" id="lostRevenue">$0</div>
-            <div class="metric-sub">Money being left on the table</div>
+
+          <div class="split">
+            <div class="card section">
+              <h2>Priority services</h2>
+              <div class="section-desc">Only the services that need attention first.</div>
+              <div class="service-list" id="priorityServiceList"></div>
+            </div>
+
+            <div class="card section">
+              <h2>Top recommendation</h2>
+              <div class="section-desc">One focused takeaway instead of a full data dump.</div>
+              <div class="insight-box">
+                <div class="insight-label">Primary takeaway</div>
+                <div class="insight-title" id="insightTitle"></div>
+                <div class="insight-sub" id="insightSub"></div>
+              </div>
+              <div class="notes">
+                <div class="note" id="overviewNote1"></div>
+                <div class="note" id="overviewNote2"></div>
+              </div>
+            </div>
           </div>
-          <div class="card metric">
-            <div class="metric-label">Hours per month</div>
-            <div class="metric-value" id="hoursPerMonthMetric">0</div>
-            <div class="metric-sub">Used to calculate true earnings</div>
-          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="viewServices" style="display:none;">
+      <div class="split">
+        <div class="card section">
+          <h2>All services</h2>
+          <div class="section-desc">Select a service to inspect details and apply a pricing recommendation.</div>
+          <div class="service-list" id="serviceList"></div>
         </div>
 
         <div class="card section">
-          <h2>Target progress</h2>
-          <div class="section-desc" id="targetProgressText">0% of your monthly income goal is being covered by current pricing and volume.</div>
-          <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+          <h2>Selected service</h2>
+          <div class="section-desc">Detailed pricing and earnings for the currently selected service.</div>
+          <div class="stat-grid">
+            <div class="mini-stat">
+              <div class="mini-label">Real hourly earnings</div>
+              <div class="mini-value" id="realHourly"></div>
+            </div>
+            <div class="mini-stat">
+              <div class="mini-label">Monthly income</div>
+              <div class="mini-value" id="monthlyIncome"></div>
+            </div>
+            <div class="mini-stat">
+              <div class="mini-label">Recommended price</div>
+              <div class="mini-value" id="recommendedPrice"></div>
+            </div>
+            <div class="mini-stat">
+              <div class="mini-label">Profit per service</div>
+              <div class="mini-value" id="profitPerService"></div>
+            </div>
+          </div>
+          <div class="notes">
+            <div class="note" id="note1"></div>
+            <div class="note" id="note2"></div>
+            <div class="note" id="note3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="viewCalculator" style="display:none;">
+      <div class="layout">
+        <div class="left-col">
+          <div class="card section">
+            <h2>Add a service</h2>
+            <div class="section-desc">Use this as a dedicated calculator screen instead of mixing it into the dashboard.</div>
+            <div class="field">
+              <label for="serviceName">Service name</label>
+              <input id="serviceName" type="text" value="Signature Facial" />
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label for="servicePrice">Price</label>
+                <input id="servicePrice" type="number" value="90" />
+              </div>
+              <div class="field">
+                <label for="serviceDuration">Duration (minutes)</label>
+                <input id="serviceDuration" type="number" value="60" />
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label for="productCost">Product cost per client</label>
+                <input id="productCost" type="number" value="14" />
+              </div>
+              <div class="field">
+                <label for="clientsPerWeek">Clients per week</label>
+                <input id="clientsPerWeek" type="number" value="10" />
+              </div>
+            </div>
+            <div style="margin-top:18px;">
+              <button class="btn-dark" id="saveService" style="width:100%;">Save service</button>
+            </div>
+          </div>
         </div>
 
-        <div class="split">
+        <div class="right-col">
           <div class="card section">
-            <h2>Service dashboard</h2>
-            <div class="section-desc">Pick a service to see what is working, what is weak, and what price the model recommends.</div>
-            <div class="service-list" id="serviceList"></div>
-          </div>
-
-          <div class="card section">
-            <h2>Selected service insight</h2>
-            <div class="section-desc">The explanation stays short and tied directly to money.</div>
-
-            <div class="insight-box">
-              <div class="insight-label">Primary takeaway</div>
-              <div class="insight-title" id="insightTitle"></div>
-              <div class="insight-sub" id="insightSub"></div>
-            </div>
-
+            <h2>What this service looks like</h2>
+            <div class="section-desc">A lightweight preview before saving.</div>
             <div class="stat-grid">
               <div class="mini-stat">
-                <div class="mini-label">Real hourly earnings</div>
-                <div class="mini-value" id="realHourly"></div>
-              </div>
-              <div class="mini-stat">
-                <div class="mini-label">Monthly income</div>
-                <div class="mini-value" id="monthlyIncome"></div>
+                <div class="mini-label">Current price</div>
+                <div class="mini-value" id="calcCurrentPrice">$0</div>
               </div>
               <div class="mini-stat">
                 <div class="mini-label">Recommended price</div>
-                <div class="mini-value" id="recommendedPrice"></div>
+                <div class="mini-value" id="calcRecommendedPrice">$0</div>
               </div>
               <div class="mini-stat">
-                <div class="mini-label">Profit per service</div>
-                <div class="mini-value" id="profitPerService"></div>
+                <div class="mini-label">Real hourly earnings</div>
+                <div class="mini-value" id="calcRealHourly">$0</div>
+              </div>
+              <div class="mini-stat">
+                <div class="mini-label">Missed monthly income</div>
+                <div class="mini-value" id="calcLostRevenue">$0</div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-            <div class="notes">
-              <div class="note" id="note1"></div>
-              <div class="note" id="note2"></div>
-              <div class="note" id="note3"></div>
-            </div>
+    <div id="viewInsights" style="display:none;">
+      <div class="split">
+        <div class="card section">
+          <h2>Business insights</h2>
+          <div class="section-desc">A summary view for decisions, not raw calculations.</div>
+          <div class="notes">
+            <div class="note" id="insight1"></div>
+            <div class="note" id="insight2"></div>
+            <div class="note" id="insight3"></div>
+          </div>
+        </div>
+        <div class="card section">
+          <h2>Recommended next action</h2>
+          <div class="section-desc">The one thing the user should do next.</div>
+          <div class="insight-box">
+            <div class="insight-label">Action</div>
+            <div class="insight-title" id="actionTitle"></div>
+            <div class="insight-sub" id="actionSub"></div>
           </div>
         </div>
       </div>
@@ -461,6 +540,7 @@
         { name: 'Chemical Peel', price: 125, duration: 45, productCost: 18, clientsPerWeek: 5 },
       ],
       selected: 0,
+      activeView: 'overview',
     };
 
     function num(v) {
@@ -509,28 +589,26 @@
       document.getElementById('weeksPerMonth').value = state.baseline.weeksPerMonth;
     }
 
-    function render() {
-      syncInputs();
-      const serviceMetrics = state.services.map(service => ({ service, metrics: calcMetrics(state.baseline, service) }));
-      const active = serviceMetrics[state.selected] || serviceMetrics[0];
-      const projected = serviceMetrics.reduce((sum, item) => sum + item.metrics.monthlyIncome, 0);
-      const lost = serviceMetrics.reduce((sum, item) => sum + item.metrics.lostRevenue, 0);
-      const gap = num(state.baseline.targetIncome) - projected;
-      const targetProgress = state.baseline.targetIncome > 0 ? (projected / state.baseline.targetIncome) * 100 : 0;
+    function setView(view) {
+      state.activeView = view;
+      document.getElementById('viewOverview').style.display = view === 'overview' ? 'block' : 'none';
+      document.getElementById('viewServices').style.display = view === 'services' ? 'block' : 'none';
+      document.getElementById('viewCalculator').style.display = view === 'calculator' ? 'block' : 'none';
+      document.getElementById('viewInsights').style.display = view === 'insights' ? 'block' : 'none';
+      document.getElementById('tabOverview').className = view === 'overview' ? 'btn-dark' : 'btn-light';
+      document.getElementById('tabServices').className = view === 'services' ? 'btn-dark' : 'btn-light';
+      document.getElementById('tabCalculator').className = view === 'calculator' ? 'btn-dark' : 'btn-light';
+      document.getElementById('tabInsights').className = view === 'insights' ? 'btn-dark' : 'btn-light';
+    }
 
-      document.getElementById('projectedIncome').textContent = money(projected);
-      document.getElementById('targetIncomeMetric').textContent = money(state.baseline.targetIncome);
-      document.getElementById('targetGap').textContent = (gap > 0 ? 'Gap: ' : 'Above target: ') + money(Math.abs(gap));
-      document.getElementById('lostRevenue').textContent = money(lost);
-      document.getElementById('hoursPerMonthMetric').textContent = (Math.round(active.metrics.hoursPerMonth * 10) / 10).toString();
-      document.getElementById('targetProgressText').textContent = Math.round(targetProgress) + '% of your monthly income goal is being covered by current pricing and volume.';
-      document.getElementById('progressBar').style.width = Math.max(0, Math.min(100, targetProgress)) + '%';
-
-      const list = document.getElementById('serviceList');
+    function renderServiceRows(targetId, serviceMetrics, limit = null) {
+      const list = document.getElementById(targetId);
       list.innerHTML = '';
-      serviceMetrics.forEach((item, index) => {
+      const rows = limit ? serviceMetrics.slice(0, limit) : serviceMetrics;
+      rows.forEach((item, index) => {
+        const actualIndex = state.services.findIndex(s => s.name === item.service.name && s.duration === item.service.duration && s.price === item.service.price);
         const row = document.createElement('div');
-        row.className = 'service-item' + (index === state.selected ? ' selected' : '');
+        row.className = 'service-item' + ((actualIndex === state.selected || (!limit && index === state.selected)) ? ' selected' : '');
         row.innerHTML = `
           <div class="service-top">
             <div>
@@ -546,16 +624,41 @@
           </div>
         `;
         row.addEventListener('click', () => {
-          state.selected = index;
+          state.selected = actualIndex > -1 ? actualIndex : index;
           render();
         });
         row.querySelector('.apply-btn').addEventListener('click', (e) => {
           e.stopPropagation();
-          state.services[index].price = calcMetrics(state.baseline, state.services[index]).recommendedPrice;
+          const idx = actualIndex > -1 ? actualIndex : index;
+          state.services[idx].price = calcMetrics(state.baseline, state.services[idx]).recommendedPrice;
           render();
         });
         list.appendChild(row);
       });
+    }
+
+    function render() {
+      syncInputs();
+      const serviceMetrics = state.services.map(service => ({ service, metrics: calcMetrics(state.baseline, service) }));
+      const active = serviceMetrics[state.selected] || serviceMetrics[0];
+      const projected = serviceMetrics.reduce((sum, item) => sum + item.metrics.monthlyIncome, 0);
+      const lost = serviceMetrics.reduce((sum, item) => sum + item.metrics.lostRevenue, 0);
+      const gap = num(state.baseline.targetIncome) - projected;
+      const targetProgress = state.baseline.targetIncome > 0 ? (projected / state.baseline.targetIncome) * 100 : 0;
+      const sortedPriority = [...serviceMetrics].sort((a, b) => b.metrics.lostRevenue - a.metrics.lostRevenue);
+      const biggestOpportunity = sortedPriority[0];
+      const bestService = [...serviceMetrics].sort((a, b) => b.metrics.profitPerService - a.metrics.profitPerService)[0];
+
+      document.getElementById('projectedIncome').textContent = money(projected);
+      document.getElementById('targetIncomeMetric').textContent = money(state.baseline.targetIncome);
+      document.getElementById('targetGap').textContent = (gap > 0 ? 'Gap: ' : 'Above target: ') + money(Math.abs(gap));
+      document.getElementById('lostRevenue').textContent = money(lost);
+      document.getElementById('hoursPerMonthMetric').textContent = active ? (Math.round(active.metrics.hoursPerMonth * 10) / 10).toString() : '0';
+      document.getElementById('targetProgressText').textContent = Math.round(targetProgress) + '% of your monthly income goal is being covered by current pricing and volume.';
+      document.getElementById('progressBar').style.width = Math.max(0, Math.min(100, targetProgress)) + '%';
+
+      renderServiceRows('serviceList', serviceMetrics);
+      renderServiceRows('priorityServiceList', sortedPriority, 2);
 
       if (active) {
         document.getElementById('insightTitle').textContent = active.metrics.underpricing > 5
@@ -574,12 +677,51 @@
         document.getElementById('note2').innerHTML = `Total cost per service: <strong>${money(active.metrics.totalCost)}</strong>`;
         document.getElementById('note3').innerHTML = `Clients per month at current pace: <strong>${Math.round(active.metrics.clientsPerMonth * 10) / 10}</strong>`;
       }
+
+      if (biggestOpportunity) {
+        document.getElementById('overviewNote1').innerHTML = `Biggest pricing opportunity: <strong>${biggestOpportunity.service.name}</strong> with about <strong>${money(biggestOpportunity.metrics.lostRevenue)}</strong> in missed monthly income.`;
+      }
+      if (bestService) {
+        document.getElementById('overviewNote2').innerHTML = `Highest profit service right now: <strong>${bestService.service.name}</strong> at about <strong>${money(bestService.metrics.profitPerService)}</strong> profit per appointment.`;
+      }
+
+      const calcPreview = {
+        name: document.getElementById('serviceName').value.trim() || 'New Service',
+        price: num(document.getElementById('servicePrice').value),
+        duration: num(document.getElementById('serviceDuration').value),
+        productCost: num(document.getElementById('productCost').value),
+        clientsPerWeek: num(document.getElementById('clientsPerWeek').value),
+      };
+      const calcMetricsPreview = calcMetrics(state.baseline, calcPreview);
+      document.getElementById('calcCurrentPrice').textContent = money(calcPreview.price);
+      document.getElementById('calcRecommendedPrice').textContent = money(calcMetricsPreview.recommendedPrice);
+      document.getElementById('calcRealHourly').textContent = money(calcMetricsPreview.realHourlyRate) + '/hr';
+      document.getElementById('calcLostRevenue').textContent = money(calcMetricsPreview.lostRevenue);
+
+      document.getElementById('insight1').innerHTML = `Current projected monthly income is <strong>${money(projected)}</strong> against a target of <strong>${money(state.baseline.targetIncome)}</strong>.`;
+      document.getElementById('insight2').innerHTML = `Total missed revenue across underpriced services is about <strong>${money(lost)}</strong> per month.`;
+      document.getElementById('insight3').innerHTML = biggestOpportunity
+        ? `Your first pricing move should probably be <strong>${biggestOpportunity.service.name}</strong>, because that is where the largest gap exists.`
+        : 'No major pricing gaps detected right now.';
+
+      document.getElementById('actionTitle').textContent = biggestOpportunity && biggestOpportunity.metrics.underpricing > 5
+        ? `Raise ${biggestOpportunity.service.name} toward ${money(biggestOpportunity.metrics.recommendedPrice)}.`
+        : 'Maintain pricing and monitor volume.';
+      document.getElementById('actionSub').textContent = biggestOpportunity && biggestOpportunity.metrics.underpricing > 5
+        ? `That single move could recover about ${money(biggestOpportunity.metrics.lostRevenue)} per month at current volume.`
+        : 'Your current pricing appears close to the target generated by the model.';
+
+      setView(state.activeView);
     }
 
     document.getElementById('monthlyOverhead').addEventListener('input', e => { state.baseline.monthlyOverhead = num(e.target.value); render(); });
     document.getElementById('targetIncome').addEventListener('input', e => { state.baseline.targetIncome = num(e.target.value); render(); });
     document.getElementById('hoursPerWeek').addEventListener('input', e => { state.baseline.hoursPerWeek = num(e.target.value); render(); });
     document.getElementById('weeksPerMonth').addEventListener('input', e => { state.baseline.weeksPerMonth = num(e.target.value); render(); });
+
+    ['serviceName','servicePrice','serviceDuration','productCost','clientsPerWeek'].forEach(id => {
+      document.getElementById(id).addEventListener('input', render);
+    });
 
     document.getElementById('saveService').addEventListener('click', () => {
       const name = document.getElementById('serviceName').value.trim();
@@ -592,6 +734,7 @@
         clientsPerWeek: num(document.getElementById('clientsPerWeek').value),
       });
       state.selected = state.services.length - 1;
+      state.activeView = 'services';
       render();
     });
 
@@ -599,11 +742,15 @@
       state.services = state.services.map(s => ({ ...s, price: num(s.price) + 5 }));
       render();
     });
-
     document.getElementById('raise10').addEventListener('click', () => {
       state.services = state.services.map(s => ({ ...s, price: num(s.price) + 10 }));
       render();
     });
+
+    document.getElementById('tabOverview').addEventListener('click', () => { state.activeView = 'overview'; render(); });
+    document.getElementById('tabServices').addEventListener('click', () => { state.activeView = 'services'; render(); });
+    document.getElementById('tabCalculator').addEventListener('click', () => { state.activeView = 'calculator'; render(); });
+    document.getElementById('tabInsights').addEventListener('click', () => { state.activeView = 'insights'; render(); });
 
     render();
   </script>

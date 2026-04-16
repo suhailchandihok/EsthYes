@@ -1,68 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>EsthYes — Pricing Reality Check</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #f4f4f4;
+      max-width: 700px;
+      margin: auto;
+      padding: 40px;
+    }
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 15px;
+    }
+    button {
+      padding: 15px;
+      width: 100%;
+      background: black;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      margin-top: 10px;
+    }
+    .result {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .small {
+      font-size: 14px;
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Are You Undercharging?</h1>
+<p>Check if your service is actually making you money</p>
+
+<div class="card">
+  <label>What do you charge?</label>
+  <input id="price" value="85">
+
+  <label>How long does it take? (minutes)</label>
+  <input id="minutes" value="60">
+
+  <label>Product cost per client</label>
+  <input id="product" value="8">
+
+  <label>Monthly overhead</label>
+  <input id="overhead" value="1200">
+
+  <label>Clients per week</label>
+  <input id="clients" value="15">
+
+  <button onclick="calc()">Check My Pricing</button>
+</div>
+
+<div class="card">
+  <div class="result" id="headline"></div>
+  <div class="result" id="hourly"></div>
+  <div class="result" id="range"></div>
+  <div class="result" id="monthly"></div>
+  <div class="result" id="whatif"></div>
+
+  <p class="small">
+    Estimates include overhead, product cost, and typical booking gaps (~75% utilization).
+  </p>
+</div>
+
 <script>
-const BENCHMARK_HOURLY = 50;
-const PRICING_BUFFER = 1.3;
-const REAL_WORLD_ADJUSTMENT = 0.75;
+function calc() {
+  let price = Number(document.getElementById("price").value);
+  let minutes = Number(document.getElementById("minutes").value);
+  let product = Number(document.getElementById("product").value);
+  let overhead = Number(document.getElementById("overhead").value);
+  let weeklyClients = Number(document.getElementById("clients").value);
 
-function money(num) {
-  return "$" + Math.round(num);
-}
+  let monthlyClients = weeklyClients * 4;
+  let hours = minutes / 60;
 
-function calculatePricing() {
-  const price = Number(document.getElementById("price").value);
-  const minutes = Number(document.getElementById("minutes").value);
-  const product = Number(document.getElementById("product").value);
-  const weeklyClients = Number(document.getElementById("clients").value);
-  const overhead = Number(document.getElementById("overhead")?.value || 1200);
+  let overheadPer = overhead / monthlyClients;
+  let cost = product + overheadPer;
 
-  if (!price || !minutes || !weeklyClients) {
-    alert("Enter valid values");
-    return;
-  }
+  let bookedHourly = (price - cost) / hours;
+  let realHourly = bookedHourly * 0.75;
 
-  const monthlyClients = weeklyClients * 4;
-  const serviceHours = minutes / 60;
+  let recommended = cost + (50 * hours * 1.3);
+  let low = Math.ceil(recommended / 5) * 5;
+  let high = Math.ceil((recommended * 1.15) / 5) * 5;
 
-  const overheadPerService = overhead / monthlyClients;
-  const cost = product + overheadPerService;
+  let gap = low - price;
 
-  const bookedHourly = (price - cost) / serviceHours;
-  const adjustedHourly = bookedHourly * REAL_WORLD_ADJUSTMENT;
+  let monthlyIncome = realHourly * hours * monthlyClients;
 
-  const recommendedBase = cost + (BENCHMARK_HOURLY * serviceHours * PRICING_BUFFER);
-  const low = Math.ceil(recommendedBase / 5) * 5;
-  const high = Math.ceil((recommendedBase * 1.15) / 5) * 5;
+  let newHourly = ((low - cost) / hours) * 0.75;
+  let newMonthly = newHourly * hours * monthlyClients;
 
-  const gap = Math.round(low - price);
+  document.getElementById("headline").innerText =
+    gap > 0 ? "You may be undercharging" : "Your pricing looks strong";
 
-  // 🔥 NEW: Monthly income
-  const monthlyIncome = adjustedHourly * serviceHours * monthlyClients;
+  document.getElementById("hourly").innerText =
+    "Real earnings: $" + realHourly.toFixed(0) + "/hr";
 
-  // 🔥 NEW: If they raise price
-  const newPrice = low;
-  const newHourly = ((newPrice - cost) / serviceHours) * REAL_WORLD_ADJUSTMENT;
-  const newMonthly = newHourly * serviceHours * monthlyClients;
+  document.getElementById("range").innerText =
+    "Stronger range: $" + low + "–$" + high;
 
-  // ===== UI OUTPUT =====
+  document.getElementById("monthly").innerText =
+    "Monthly: $" + monthlyIncome.toFixed(0);
 
-  document.getElementById("earningsValue").innerText = money(adjustedHourly) + "/hr";
-  document.getElementById("rangeValue").innerText = money(low) + "–" + money(high);
-
-  // 🔥 ADD THIS BLOCK TO YOUR HTML (see below)
-  document.getElementById("monthlyIncome").innerText =
-    "≈ " + money(monthlyIncome) + "/month at current pricing";
-
-  document.getElementById("whatIf").innerText =
-    "If you charged " + money(newPrice) +
-    ", you'd earn ~" + money(newHourly) +
-    "/hr and ~" + money(newMonthly) + "/month";
-
-  document.getElementById("assumptions").innerText =
-    "Estimates assume ~75% booking utilization, typical downtime, and a target earning benchmark of ~$50/hr.";
-
-  if (gap > 0) {
-    document.getElementById("headline").innerText = "You may be undercharging this service.";
-  } else {
-    document.getElementById("headline").innerText = "Your pricing looks strong.";
-  }
+  document.getElementById("whatif").innerText =
+    "If you charged $" + low +
+    ": $" + newHourly.toFixed(0) + "/hr → $" +
+    newMonthly.toFixed(0) + "/month";
 }
 </script>
+
+</body>
+</html>

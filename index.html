@@ -1,82 +1,369 @@
 import React, { useMemo, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DollarSign, TrendingUp, AlertTriangle, Calculator, Scissors, Target, Plus, Sparkles } from "lucide-react";
 
-const roundMoney = (n) => Math.round((Number(n) || 0) * 100) / 100;
-const safeNum = (v) => Number(v) || 0;
-const roundRecommended = (n) => Math.max(0, Math.round(n / 5) * 5);
-
-function getStatus(currentPrice, recommendedPrice) {
-  const diff = recommendedPrice - currentPrice;
-  if (diff > 5) return { label: "Underpriced", variant: "destructive" };
-  if (diff < -5) return { label: "Premium", variant: "secondary" };
-  return { label: "Optimized", variant: "default" };
+function num(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
 }
 
-function calcServiceMetrics(baseline, service) {
-  const hoursPerMonth = Math.max(0.1, baseline.hoursPerWeek * baseline.weeksPerMonth);
-  const serviceTimeHours = Math.max(0.1, service.duration / 60);
-  const clientsPerMonth = service.clientsPerWeek * baseline.weeksPerMonth;
-  const overheadPerHour = baseline.monthlyOverhead / hoursPerMonth;
-  const overheadPerService = overheadPerHour * serviceTimeHours;
-  const totalCost = service.productCost + overheadPerService;
-  const profitPerService = service.price - totalCost;
-  const realHourlyRate = profitPerService / serviceTimeHours;
+function money(v) {
+  return `$${Math.round((v || 0) * 100) / 100}`;
+}
+
+function roundPrice(v) {
+  return Math.max(0, Math.round(v / 5) * 5);
+}
+
+function calcMetrics(baseline, service) {
+  const hoursPerMonth = Math.max(0.1, num(baseline.hoursPerWeek) * num(baseline.weeksPerMonth));
+  const serviceHours = Math.max(0.1, num(service.duration) / 60);
+  const clientsPerMonth = num(service.clientsPerWeek) * num(baseline.weeksPerMonth);
+  const overheadPerHour = num(baseline.monthlyOverhead) / hoursPerMonth;
+  const overheadPerService = overheadPerHour * serviceHours;
+  const totalCost = num(service.productCost) + overheadPerService;
+  const profitPerService = num(service.price) - totalCost;
+  const realHourlyRate = profitPerService / serviceHours;
   const monthlyIncome = profitPerService * clientsPerMonth;
-  const requiredHourlyRate = baseline.targetIncome / hoursPerMonth;
-  const requiredProfitPerService = requiredHourlyRate * serviceTimeHours;
-  const recommendedPrice = roundRecommended(requiredProfitPerService + totalCost);
-  const underpricingAmount = recommendedPrice - service.price;
-  const lostRevenueMonthly = Math.max(0, underpricingAmount) * clientsPerMonth;
+  const requiredHourlyRate = num(baseline.targetIncome) / hoursPerMonth;
+  const recommendedPrice = roundPrice(requiredHourlyRate * serviceHours + totalCost);
+  const underpricing = recommendedPrice - num(service.price);
+  const lostRevenue = Math.max(0, underpricing) * clientsPerMonth;
+
+  let status = "Optimized";
+  if (underpricing > 5) status = "Underpriced";
+  if (underpricing < -5) status = "Premium";
 
   return {
-    hoursPerMonth: roundMoney(hoursPerMonth),
-    serviceTimeHours: roundMoney(serviceTimeHours),
-    clientsPerMonth: roundMoney(clientsPerMonth),
-    overheadPerHour: roundMoney(overheadPerHour),
-    overheadPerService: roundMoney(overheadPerService),
-    totalCost: roundMoney(totalCost),
-    profitPerService: roundMoney(profitPerService),
-    realHourlyRate: roundMoney(realHourlyRate),
-    monthlyIncome: roundMoney(monthlyIncome),
-    requiredHourlyRate: roundMoney(requiredHourlyRate),
-    recommendedPrice: roundMoney(recommendedPrice),
-    underpricingAmount: roundMoney(underpricingAmount),
-    lostRevenueMonthly: roundMoney(lostRevenueMonthly),
-    status: getStatus(service.price, recommendedPrice),
+    hoursPerMonth,
+    serviceHours,
+    clientsPerMonth,
+    overheadPerService,
+    totalCost,
+    profitPerService,
+    realHourlyRate,
+    monthlyIncome,
+    requiredHourlyRate,
+    recommendedPrice,
+    underpricing,
+    lostRevenue,
+    status,
   };
 }
 
-function MetricCard({ title, value, subtext, icon: Icon }) {
+const styles = {
+  page: {
+    minHeight: "100vh",
+    background: "#f6f7fb",
+    fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+    color: "#111827",
+    padding: 24,
+  },
+  shell: {
+    maxWidth: 1280,
+    margin: "0 auto",
+  },
+  hero: {
+    background: "#ffffff",
+    border: "1px solid #e5e7eb",
+    borderRadius: 24,
+    padding: 24,
+    marginBottom: 20,
+    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.04)",
+  },
+  heroTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 16,
+    flexWrap: "wrap",
+  },
+  badge: {
+    display: "inline-block",
+    fontSize: 12,
+    fontWeight: 600,
+    background: "#eef2ff",
+    color: "#4338ca",
+    padding: "6px 10px",
+    borderRadius: 999,
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 40,
+    lineHeight: 1.05,
+    margin: 0,
+    fontWeight: 700,
+    letterSpacing: "-0.03em",
+  },
+  subtitle: {
+    marginTop: 10,
+    color: "#6b7280",
+    fontSize: 16,
+    maxWidth: 760,
+    lineHeight: 1.5,
+  },
+  actionRow: {
+    display: "flex",
+    gap: 10,
+    flexWrap: "wrap",
+  },
+  button: {
+    background: "#111827",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: 14,
+    padding: "12px 16px",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  buttonLight: {
+    background: "#ffffff",
+    color: "#111827",
+    border: "1px solid #d1d5db",
+    borderRadius: 14,
+    padding: "12px 16px",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  layout: {
+    display: "grid",
+    gridTemplateColumns: "360px 1fr",
+    gap: 20,
+  },
+  leftCol: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 20,
+  },
+  card: {
+    background: "#ffffff",
+    border: "1px solid #e5e7eb",
+    borderRadius: 24,
+    padding: 20,
+    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.04)",
+  },
+  cardTitle: {
+    margin: 0,
+    fontSize: 20,
+    fontWeight: 700,
+    letterSpacing: "-0.02em",
+  },
+  cardDesc: {
+    marginTop: 6,
+    color: "#6b7280",
+    fontSize: 14,
+    lineHeight: 1.45,
+  },
+  field: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    marginTop: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: "#374151",
+  },
+  input: {
+    height: 44,
+    borderRadius: 12,
+    border: "1px solid #d1d5db",
+    padding: "0 12px",
+    fontSize: 15,
+    outline: "none",
+    background: "#ffffff",
+  },
+  twoCol: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 12,
+  },
+  rightCol: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 20,
+  },
+  metricsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: 14,
+  },
+  metric: {
+    background: "#ffffff",
+    border: "1px solid #e5e7eb",
+    borderRadius: 20,
+    padding: 18,
+    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.04)",
+  },
+  metricLabel: {
+    fontSize: 13,
+    color: "#6b7280",
+    marginBottom: 10,
+  },
+  metricValue: {
+    fontSize: 28,
+    fontWeight: 700,
+    letterSpacing: "-0.03em",
+  },
+  metricSub: {
+    marginTop: 8,
+    fontSize: 12,
+    color: "#6b7280",
+    lineHeight: 1.4,
+  },
+  progressWrap: {
+    background: "#e5e7eb",
+    borderRadius: 999,
+    height: 12,
+    overflow: "hidden",
+    marginTop: 16,
+  },
+  progressBar: (pct) => ({
+    width: `${Math.max(0, Math.min(100, pct))}%`,
+    height: "100%",
+    background: "linear-gradient(90deg, #6366f1, #8b5cf6)",
+    borderRadius: 999,
+  }),
+  split: {
+    display: "grid",
+    gridTemplateColumns: "1.1fr 0.9fr",
+    gap: 20,
+  },
+  serviceList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+    marginTop: 18,
+  },
+  serviceItem: (selected) => ({
+    border: selected ? "1px solid #4f46e5" : "1px solid #e5e7eb",
+    background: selected ? "#f5f3ff" : "#ffffff",
+    borderRadius: 18,
+    padding: 16,
+    cursor: "pointer",
+  }),
+  serviceTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "center",
+    flexWrap: "wrap",
+  },
+  serviceName: {
+    fontSize: 16,
+    fontWeight: 700,
+  },
+  serviceMeta: {
+    marginTop: 6,
+    fontSize: 13,
+    color: "#6b7280",
+  },
+  pillRow: {
+    display: "flex",
+    gap: 8,
+    alignItems: "center",
+    flexWrap: "wrap",
+  },
+  pill: (tone) => ({
+    fontSize: 12,
+    fontWeight: 700,
+    borderRadius: 999,
+    padding: "7px 10px",
+    background:
+      tone === "danger" ? "#fee2e2" : tone === "good" ? "#dcfce7" : tone === "premium" ? "#ede9fe" : "#f3f4f6",
+    color:
+      tone === "danger" ? "#b91c1c" : tone === "good" ? "#166534" : tone === "premium" ? "#5b21b6" : "#374151",
+  }),
+  insightBox: {
+    background: "linear-gradient(135deg, #111827, #1f2937)",
+    color: "#ffffff",
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 18,
+  },
+  insightLabel: {
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: ".08em",
+    color: "#c7d2fe",
+    marginBottom: 10,
+  },
+  insightTitle: {
+    fontSize: 24,
+    lineHeight: 1.2,
+    fontWeight: 700,
+    letterSpacing: "-0.03em",
+  },
+  insightSub: {
+    marginTop: 10,
+    color: "#d1d5db",
+    lineHeight: 1.5,
+    fontSize: 14,
+  },
+  statGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 12,
+    marginTop: 16,
+  },
+  miniStat: {
+    background: "#f9fafb",
+    border: "1px solid #e5e7eb",
+    borderRadius: 16,
+    padding: 14,
+  },
+  miniLabel: {
+    fontSize: 12,
+    color: "#6b7280",
+  },
+  miniValue: {
+    marginTop: 6,
+    fontSize: 22,
+    fontWeight: 700,
+    letterSpacing: "-0.03em",
+  },
+  noteList: {
+    marginTop: 16,
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+  },
+  note: {
+    background: "#f9fafb",
+    border: "1px solid #e5e7eb",
+    borderRadius: 16,
+    padding: 14,
+    fontSize: 14,
+    lineHeight: 1.5,
+    color: "#374151",
+  },
+};
+
+function Field({ label, value, onChange, type = "number", placeholder = "" }) {
   return (
-    <Card className="rounded-3xl border-0 shadow-sm">
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm text-muted-foreground">{title}</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight">{value}</p>
-            {subtext ? <p className="mt-1 text-xs text-muted-foreground">{subtext}</p> : null}
-          </div>
-          <div className="rounded-2xl bg-muted p-3">
-            <Icon className="h-5 w-5" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div style={styles.field}>
+      <label style={styles.label}>{label}</label>
+      <input
+        style={styles.input}
+        type={type}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(type === "text" ? e.target.value : num(e.target.value))}
+      />
+    </div>
   );
 }
 
-function MoneyInput({ value, onChange, placeholder }) {
-  return <Input type="number" value={value} onChange={(e) => onChange(safeNum(e.target.value))} placeholder={placeholder} />;
+function Metric({ label, value, sub }) {
+  return (
+    <div style={styles.metric}>
+      <div style={styles.metricLabel}>{label}</div>
+      <div style={styles.metricValue}>{value}</div>
+      <div style={styles.metricSub}>{sub}</div>
+    </div>
+  );
 }
 
-export default function EstheticianPricingApp() {
+export default function App() {
   const [baseline, setBaseline] = useState({
     monthlyOverhead: 1200,
     targetIncome: 8000,
@@ -84,7 +371,7 @@ export default function EstheticianPricingApp() {
     weeksPerMonth: 4.3,
   });
 
-  const [serviceForm, setServiceForm] = useState({
+  const [form, setForm] = useState({
     name: "Signature Facial",
     price: 90,
     duration: 60,
@@ -97,281 +384,194 @@ export default function EstheticianPricingApp() {
     { name: "Chemical Peel", price: 125, duration: 45, productCost: 18, clientsPerWeek: 5 },
   ]);
 
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selected, setSelected] = useState(0);
 
-  const allServiceMetrics = useMemo(() => {
+  const serviceMetrics = useMemo(() => {
     return services.map((service) => ({
       service,
-      metrics: calcServiceMetrics(baseline, service),
+      metrics: calcMetrics(baseline, service),
     }));
-  }, [baseline, services]);
+  }, [services, baseline]);
 
-  const activeItem = allServiceMetrics[selectedIndex] || allServiceMetrics[0];
-  const activeService = activeItem ? activeItem.service : serviceForm;
-  const activeMetrics = activeItem ? activeItem.metrics : calcServiceMetrics(baseline, serviceForm);
+  const active = serviceMetrics[selected] || serviceMetrics[0];
 
   const totals = useMemo(() => {
-    const projected = allServiceMetrics.reduce((sum, item) => sum + item.metrics.monthlyIncome, 0);
-    const lost = allServiceMetrics.reduce((sum, item) => sum + Math.max(0, item.metrics.lostRevenueMonthly), 0);
-    const gap = baseline.targetIncome - projected;
-    const targetProgress = baseline.targetIncome > 0 ? Math.min(100, Math.max(0, (projected / baseline.targetIncome) * 100)) : 0;
-    return {
-      projected: roundMoney(projected),
-      lost: roundMoney(lost),
-      gap: roundMoney(gap),
-      targetProgress: roundMoney(targetProgress),
-    };
-  }, [allServiceMetrics, baseline.targetIncome]);
+    const projected = serviceMetrics.reduce((sum, item) => sum + item.metrics.monthlyIncome, 0);
+    const lost = serviceMetrics.reduce((sum, item) => sum + item.metrics.lostRevenue, 0);
+    const gap = num(baseline.targetIncome) - projected;
+    const targetProgress = baseline.targetIncome > 0 ? (projected / baseline.targetIncome) * 100 : 0;
+    return { projected, lost, gap, targetProgress };
+  }, [serviceMetrics, baseline.targetIncome]);
 
-  function addService() {
-    if (!serviceForm.name.trim()) return;
-    setServices((prev) => [...prev, { ...serviceForm }]);
-    setSelectedIndex(services.length);
+  function saveService() {
+    if (!form.name.trim()) return;
+    setServices((prev) => [...prev, { ...form }]);
+    setSelected(services.length);
   }
 
-  function applyRecommendedPrice(index) {
+  function applyRecommended(index) {
     setServices((prev) =>
       prev.map((service, i) => {
         if (i !== index) return service;
-        const recommended = calcServiceMetrics(baseline, service).recommendedPrice;
-        return { ...service, price: recommended };
+        const nextPrice = calcMetrics(baseline, service).recommendedPrice;
+        return { ...service, price: nextPrice };
       })
     );
   }
 
-  function simulateAllIncrease(delta) {
-    setServices((prev) => prev.map((service) => ({ ...service, price: roundMoney(service.price + delta) })));
+  function increaseAll(delta) {
+    setServices((prev) => prev.map((s) => ({ ...s, price: num(s.price) + delta })));
+  }
+
+  function statusTone(status) {
+    if (status === "Underpriced") return "danger";
+    if (status === "Premium") return "premium";
+    return "good";
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white p-4 md:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full border bg-white px-3 py-1 text-xs text-muted-foreground shadow-sm">
-              <Sparkles className="h-3.5 w-3.5" />
-              Pricing and income decision tool
+    <div style={styles.page}>
+      <div style={styles.shell}>
+        <div style={styles.hero}>
+          <div style={styles.heroTop}>
+            <div>
+              <div style={styles.badge}>Pricing and income optimizer</div>
+              <h1 style={styles.title}>Esthetician Pricing Optimizer</h1>
+              <div style={styles.subtitle}>
+                See what each service is really earning, where you are undercharging, and how price changes affect monthly income without making the screen feel overwhelming.
+              </div>
             </div>
-            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Esthetician Pricing Optimizer</h1>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground md:text-base">
-              A clean way to see what each service is actually earning, where you are undercharging, and how price changes affect monthly income.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" className="rounded-2xl" onClick={() => simulateAllIncrease(5)}>
-              +$5 all services
-            </Button>
-            <Button className="rounded-2xl" onClick={() => simulateAllIncrease(10)}>
-              +$10 all services
-            </Button>
+            <div style={styles.actionRow}>
+              <button style={styles.buttonLight} onClick={() => increaseAll(5)}>Raise all by $5</button>
+              <button style={styles.button} onClick={() => increaseAll(10)}>Raise all by $10</button>
+            </div>
           </div>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-          <div className="space-y-6">
-            <Card className="rounded-3xl border-0 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-xl">Business baseline</CardTitle>
-                <CardDescription>Set this once, then use it across every service.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Monthly overhead</Label>
-                  <MoneyInput value={baseline.monthlyOverhead} onChange={(v) => setBaseline((p) => ({ ...p, monthlyOverhead: v }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Target monthly income</Label>
-                  <MoneyInput value={baseline.targetIncome} onChange={(v) => setBaseline((p) => ({ ...p, targetIncome: v }))} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Hours per week</Label>
-                    <MoneyInput value={baseline.hoursPerWeek} onChange={(v) => setBaseline((p) => ({ ...p, hoursPerWeek: v }))} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Weeks per month</Label>
-                    <Input type="number" step="0.1" value={baseline.weeksPerMonth} onChange={(e) => setBaseline((p) => ({ ...p, weeksPerMonth: safeNum(e.target.value) }))} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-3xl border-0 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-xl">Add a service</CardTitle>
-                <CardDescription>Simple enough to use quickly, detailed enough to be useful.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Service name</Label>
-                  <Input value={serviceForm.name} onChange={(e) => setServiceForm((p) => ({ ...p, name: e.target.value }))} placeholder="Hydrafacial" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Price</Label>
-                    <MoneyInput value={serviceForm.price} onChange={(v) => setServiceForm((p) => ({ ...p, price: v }))} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Duration (minutes)</Label>
-                    <MoneyInput value={serviceForm.duration} onChange={(v) => setServiceForm((p) => ({ ...p, duration: v }))} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Product cost per client</Label>
-                    <MoneyInput value={serviceForm.productCost} onChange={(v) => setServiceForm((p) => ({ ...p, productCost: v }))} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Clients per week</Label>
-                    <MoneyInput value={serviceForm.clientsPerWeek} onChange={(v) => setServiceForm((p) => ({ ...p, clientsPerWeek: v }))} />
-                  </div>
-                </div>
-                <Button className="w-full rounded-2xl" onClick={addService}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Save service
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <MetricCard title="Projected monthly income" value={`$${totals.projected.toLocaleString()}`} subtext="Across all saved services" icon={DollarSign} />
-              <MetricCard title="Target income" value={`$${baseline.targetIncome.toLocaleString()}`} subtext={`${totals.gap > 0 ? "Gap" : "Above target"}: $${Math.abs(totals.gap).toLocaleString()}`} icon={Target} />
-              <MetricCard title="Lost revenue" value={`$${totals.lost.toLocaleString()}`} subtext="From underpriced services" icon={AlertTriangle} />
-              <MetricCard title="Hours per month" value={`${roundMoney(baseline.hoursPerWeek * baseline.weeksPerMonth)}`} subtext="Used in the pricing model" icon={Calculator} />
+        <div style={styles.layout}>
+          <div style={styles.leftCol}>
+            <div style={styles.card}>
+              <h2 style={styles.cardTitle}>Business baseline</h2>
+              <div style={styles.cardDesc}>These numbers are entered once and used across every service.</div>
+              <Field label="Monthly overhead" value={baseline.monthlyOverhead} onChange={(v) => setBaseline({ ...baseline, monthlyOverhead: v })} />
+              <Field label="Target monthly income" value={baseline.targetIncome} onChange={(v) => setBaseline({ ...baseline, targetIncome: v })} />
+              <div style={styles.twoCol}>
+                <Field label="Hours per week" value={baseline.hoursPerWeek} onChange={(v) => setBaseline({ ...baseline, hoursPerWeek: v })} />
+                <Field label="Weeks per month" value={baseline.weeksPerMonth} onChange={(v) => setBaseline({ ...baseline, weeksPerMonth: v })} />
+              </div>
             </div>
 
-            <Card className="rounded-3xl border-0 shadow-sm">
-              <CardContent className="p-5 md:p-6">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Target progress</p>
-                    <h2 className="mt-1 text-2xl font-semibold tracking-tight">{Math.round(totals.targetProgress)}% of income goal</h2>
+            <div style={styles.card}>
+              <h2 style={styles.cardTitle}>Add a service</h2>
+              <div style={styles.cardDesc}>Fast enough to use in real life, not like bookkeeping software.</div>
+              <Field label="Service name" type="text" value={form.name} placeholder="Hydrafacial" onChange={(v) => setForm({ ...form, name: v })} />
+              <div style={styles.twoCol}>
+                <Field label="Price" value={form.price} onChange={(v) => setForm({ ...form, price: v })} />
+                <Field label="Duration (minutes)" value={form.duration} onChange={(v) => setForm({ ...form, duration: v })} />
+              </div>
+              <div style={styles.twoCol}>
+                <Field label="Product cost per client" value={form.productCost} onChange={(v) => setForm({ ...form, productCost: v })} />
+                <Field label="Clients per week" value={form.clientsPerWeek} onChange={(v) => setForm({ ...form, clientsPerWeek: v })} />
+              </div>
+              <div style={{ marginTop: 18 }}>
+                <button style={{ ...styles.button, width: "100%" }} onClick={saveService}>Save service</button>
+              </div>
+            </div>
+          </div>
+
+          <div style={styles.rightCol}>
+            <div style={styles.metricsGrid}>
+              <Metric label="Projected monthly income" value={money(totals.projected)} sub="Across all saved services" />
+              <Metric label="Target income" value={money(baseline.targetIncome)} sub={`${totals.gap > 0 ? "Gap" : "Above target"}: ${money(Math.abs(totals.gap))}`} />
+              <Metric label="Lost revenue" value={money(totals.lost)} sub="Money being left on the table" />
+              <Metric label="Hours per month" value={String(Math.round(active.metrics.hoursPerMonth * 10) / 10)} sub="Used to calculate true earnings" />
+            </div>
+
+            <div style={styles.card}>
+              <h2 style={styles.cardTitle}>Target progress</h2>
+              <div style={styles.cardDesc}>{Math.round(totals.targetProgress)}% of your monthly income goal is being covered by current pricing and volume.</div>
+              <div style={styles.progressWrap}>
+                <div style={styles.progressBar(totals.targetProgress)} />
+              </div>
+            </div>
+
+            <div style={styles.split}>
+              <div style={styles.card}>
+                <h2 style={styles.cardTitle}>Service dashboard</h2>
+                <div style={styles.cardDesc}>Pick a service to see what is working, what is weak, and what price the model recommends.</div>
+                <div style={styles.serviceList}>
+                  {serviceMetrics.map((item, index) => (
+                    <div key={`${item.service.name}-${index}`} style={styles.serviceItem(index === selected)} onClick={() => setSelected(index)}>
+                      <div style={styles.serviceTop}>
+                        <div>
+                          <div style={styles.serviceName}>{item.service.name}</div>
+                          <div style={styles.serviceMeta}>
+                            {money(item.service.price)} · {item.service.duration} min · {item.service.clientsPerWeek} clients/week
+                          </div>
+                        </div>
+                        <div style={styles.pillRow}>
+                          <div style={styles.pill(statusTone(item.metrics.status))}>{item.metrics.status}</div>
+                          <div style={styles.pill("neutral")}>Profit {money(item.metrics.profitPerService)}</div>
+                          <div style={styles.pill("neutral")}>{money(item.metrics.realHourlyRate)}/hr</div>
+                          <button
+                            style={styles.buttonLight}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              applyRecommended(index);
+                            }}
+                          >
+                            Apply recommended
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={styles.card}>
+                <h2 style={styles.cardTitle}>Selected service insight</h2>
+                <div style={styles.cardDesc}>The explanation stays short and tied directly to money.</div>
+
+                <div style={styles.insightBox}>
+                  <div style={styles.insightLabel}>Primary takeaway</div>
+                  <div style={styles.insightTitle}>
+                    {active.metrics.underpricing > 5
+                      ? `You are undercharging ${active.service.name} by about ${money(active.metrics.underpricing)} per service.`
+                      : `Your pricing for ${active.service.name} is close to target.`}
                   </div>
-                  <div className="w-full md:max-w-sm">
-                    <Progress value={totals.targetProgress} className="h-3" />
+                  <div style={styles.insightSub}>
+                    {active.metrics.underpricing > 5
+                      ? `At your current volume, that adds up to about ${money(active.metrics.lostRevenue)} in missed monthly income.`
+                      : `This service is not the biggest pricing problem in the business right now.`}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
 
-            <div className="grid gap-6 2xl:grid-cols-[1.2fr_0.8fr]">
-              <Card className="rounded-3xl border-0 shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-xl">Service dashboard</CardTitle>
-                  <CardDescription>Select a service to view detailed pricing logic and recommendations.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {allServiceMetrics.map((item, index) => (
-                      <button
-                        key={item.service.name + index}
-                        type="button"
-                        className={`w-full rounded-2xl border p-4 text-left transition hover:shadow-sm ${selectedIndex === index ? "border-slate-900 bg-slate-50" : "bg-white"}`}
-                        onClick={() => setSelectedIndex(index)}
-                      >
-                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <Scissors className="h-4 w-4 text-muted-foreground" />
-                              <p className="font-medium">{item.service.name}</p>
-                            </div>
-                            <p className="mt-1 text-sm text-muted-foreground">
-                              ${item.service.price} · {item.service.duration} min · {item.service.clientsPerWeek}/week
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant={item.metrics.status.variant}>{item.metrics.status.label}</Badge>
-                            <div className="rounded-xl bg-muted px-3 py-2 text-sm font-medium">Profit ${item.metrics.profitPerService}</div>
-                            <div className="rounded-xl bg-muted px-3 py-2 text-sm font-medium">${item.metrics.realHourlyRate}/hr</div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="rounded-xl"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                applyRecommendedPrice(index);
-                              }}
-                            >
-                              Apply recommended
-                            </Button>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
+                <div style={styles.statGrid}>
+                  <div style={styles.miniStat}>
+                    <div style={styles.miniLabel}>Real hourly earnings</div>
+                    <div style={styles.miniValue}>{money(active.metrics.realHourlyRate)}/hr</div>
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card className="rounded-3xl border-0 shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-xl">Selected service insight</CardTitle>
-                  <CardDescription>Short, direct, and tied to money.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-5">
-                  <div className="rounded-2xl border bg-slate-50 p-4">
-                    <p className="text-sm text-muted-foreground">Primary takeaway</p>
-                    <p className="mt-2 text-lg font-semibold leading-snug">
-                      {activeMetrics.underpricingAmount > 5
-                        ? `You are undercharging ${activeService.name} by about $${Math.max(0, activeMetrics.underpricingAmount)} per service.`
-                        : `Your current pricing for ${activeService.name} is close to target.`}
-                    </p>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {activeMetrics.underpricingAmount > 5
-                        ? `At your current volume, that is about $${Math.max(0, activeMetrics.lostRevenueMonthly).toLocaleString()} in missed monthly income.`
-                        : `This service is not the main pricing problem right now.`}
-                    </p>
+                  <div style={styles.miniStat}>
+                    <div style={styles.miniLabel}>Monthly income</div>
+                    <div style={styles.miniValue}>{money(active.metrics.monthlyIncome)}</div>
                   </div>
+                  <div style={styles.miniStat}>
+                    <div style={styles.miniLabel}>Recommended price</div>
+                    <div style={styles.miniValue}>{money(active.metrics.recommendedPrice)}</div>
+                  </div>
+                  <div style={styles.miniStat}>
+                    <div style={styles.miniLabel}>Profit per service</div>
+                    <div style={styles.miniValue}>{money(active.metrics.profitPerService)}</div>
+                  </div>
+                </div>
 
-                  <Tabs defaultValue="overview" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 rounded-2xl">
-                      <TabsTrigger value="overview">Overview</TabsTrigger>
-                      <TabsTrigger value="pricing">Pricing</TabsTrigger>
-                      <TabsTrigger value="math">Math</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="overview" className="mt-4 space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="rounded-2xl bg-muted p-4">
-                          <p className="text-xs text-muted-foreground">Real hourly earnings</p>
-                          <p className="mt-1 text-xl font-semibold">${activeMetrics.realHourlyRate}/hr</p>
-                        </div>
-                        <div className="rounded-2xl bg-muted p-4">
-                          <p className="text-xs text-muted-foreground">Monthly income</p>
-                          <p className="mt-1 text-xl font-semibold">${activeMetrics.monthlyIncome}</p>
-                        </div>
-                      </div>
-                      <div className="rounded-2xl bg-muted p-4">
-                        <p className="text-xs text-muted-foreground">Recommended price</p>
-                        <p className="mt-1 text-2xl font-semibold">${activeMetrics.recommendedPrice}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">Based on your overhead, income goal, and schedule.</p>
-                      </div>
-                    </TabsContent>
-                    <TabsContent value="pricing" className="mt-4 space-y-3">
-                      <div className="flex items-center justify-between rounded-2xl bg-muted p-4">
-                        <span className="text-sm text-muted-foreground">Current price</span>
-                        <span className="font-semibold">${activeService.price}</span>
-                      </div>
-                      <div className="flex items-center justify-between rounded-2xl bg-muted p-4">
-                        <span className="text-sm text-muted-foreground">Recommended price</span>
-                        <span className="font-semibold">${activeMetrics.recommendedPrice}</span>
-                      </div>
-                      <div className="flex items-center justify-between rounded-2xl bg-muted p-4">
-                        <span className="text-sm text-muted-foreground">Monthly lost revenue</span>
-                        <span className="font-semibold">${Math.max(0, activeMetrics.lostRevenueMonthly)}</span>
-                      </div>
-                    </TabsContent>
-                    <TabsContent value="math" className="mt-4 space-y-3 text-sm">
-                      <div className="rounded-2xl bg-muted p-4 space-y-1">
-                        <p>Overhead per service: <span className="font-semibold">${activeMetrics.overheadPerService}</span></p>
-                        <p>Total cost per service: <span className="font-semibold">${activeMetrics.totalCost}</span></p>
-                        <p>Profit per service: <span className="font-semibold">${activeMetrics.profitPerService}</span></p>
-                        <p>Clients per month: <span className="font-semibold">{activeMetrics.clientsPerMonth}</span></p>
-                      </div>
-                    </TabsContent>
-                  </Tabs>
-                </CardContent>
-              </Card>
+                <div style={styles.noteList}>
+                  <div style={styles.note}>Overhead allocated to this service: <strong>{money(active.metrics.overheadPerService)}</strong></div>
+                  <div style={styles.note}>Total cost per service: <strong>{money(active.metrics.totalCost)}</strong></div>
+                  <div style={styles.note}>Clients per month at current pace: <strong>{Math.round(active.metrics.clientsPerMonth * 10) / 10}</strong></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

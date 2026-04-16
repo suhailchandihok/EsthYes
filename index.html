@@ -6,54 +6,34 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DollarSign, TrendingUp, AlertTriangle, Calculator, Scissors, Target, Plus, Sparkles } from "lucide-react";
 
-const roundMoney = (n: number) => Math.round((Number(n) || 0) * 100) / 100;
-const safeNum = (v: string | number) => Number(v) || 0;
-const roundRecommended = (n: number) => Math.max(0, Math.round(n / 5) * 5);
+const roundMoney = (n) => Math.round((Number(n) || 0) * 100) / 100;
+const safeNum = (v) => Number(v) || 0;
+const roundRecommended = (n) => Math.max(0, Math.round(n / 5) * 5);
 
-function getStatus(currentPrice: number, recommendedPrice: number) {
+function getStatus(currentPrice, recommendedPrice) {
   const diff = recommendedPrice - currentPrice;
-  if (diff > 5) return { label: "Underpriced", tone: "destructive" as const };
-  if (diff < -5) return { label: "Premium", tone: "secondary" as const };
-  return { label: "Optimized", tone: "default" as const };
+  if (diff > 5) return { label: "Underpriced", variant: "destructive" };
+  if (diff < -5) return { label: "Premium", variant: "secondary" };
+  return { label: "Optimized", variant: "default" };
 }
 
-function calcServiceMetrics({
-  monthlyOverhead,
-  targetIncome,
-  hoursPerWeek,
-  weeksPerMonth,
-  service,
-}: {
-  monthlyOverhead: number;
-  targetIncome: number;
-  hoursPerWeek: number;
-  weeksPerMonth: number;
-  service: {
-    name: string;
-    price: number;
-    duration: number;
-    productCost: number;
-    clientsPerWeek: number;
-  };
-}) {
-  const hoursPerMonth = Math.max(0.1, hoursPerWeek * weeksPerMonth);
+function calcServiceMetrics(baseline, service) {
+  const hoursPerMonth = Math.max(0.1, baseline.hoursPerWeek * baseline.weeksPerMonth);
   const serviceTimeHours = Math.max(0.1, service.duration / 60);
-  const clientsPerMonth = service.clientsPerWeek * weeksPerMonth;
-  const overheadPerHour = monthlyOverhead / hoursPerMonth;
+  const clientsPerMonth = service.clientsPerWeek * baseline.weeksPerMonth;
+  const overheadPerHour = baseline.monthlyOverhead / hoursPerMonth;
   const overheadPerService = overheadPerHour * serviceTimeHours;
   const totalCost = service.productCost + overheadPerService;
   const profitPerService = service.price - totalCost;
   const realHourlyRate = profitPerService / serviceTimeHours;
   const monthlyIncome = profitPerService * clientsPerMonth;
-  const requiredHourlyRate = targetIncome / hoursPerMonth;
+  const requiredHourlyRate = baseline.targetIncome / hoursPerMonth;
   const requiredProfitPerService = requiredHourlyRate * serviceTimeHours;
   const recommendedPrice = roundRecommended(requiredProfitPerService + totalCost);
-  const underpricingAmount = Math.max(0, recommendedPrice - service.price);
-  const lostRevenueMonthly = underpricingAmount * clientsPerMonth;
-  const status = getStatus(service.price, recommendedPrice);
+  const underpricingAmount = recommendedPrice - service.price;
+  const lostRevenueMonthly = Math.max(0, underpricingAmount) * clientsPerMonth;
 
   return {
     hoursPerMonth: roundMoney(hoursPerMonth),
@@ -67,13 +47,13 @@ function calcServiceMetrics({
     monthlyIncome: roundMoney(monthlyIncome),
     requiredHourlyRate: roundMoney(requiredHourlyRate),
     recommendedPrice: roundMoney(recommendedPrice),
-    underpricingAmount: roundMoney(recommendedPrice - service.price),
+    underpricingAmount: roundMoney(underpricingAmount),
     lostRevenueMonthly: roundMoney(lostRevenueMonthly),
-    status,
+    status: getStatus(service.price, recommendedPrice),
   };
 }
 
-function MetricCard({ title, value, subtext, icon: Icon }: { title: string; value: string; subtext?: string; icon: any }) {
+function MetricCard({ title, value, subtext, icon: Icon }) {
   return (
     <Card className="rounded-3xl border-0 shadow-sm">
       <CardContent className="p-5">
@@ -90,6 +70,10 @@ function MetricCard({ title, value, subtext, icon: Icon }: { title: string; valu
       </CardContent>
     </Card>
   );
+}
+
+function MoneyInput({ value, onChange, placeholder }) {
+  return <Input type="number" value={value} onChange={(e) => onChange(safeNum(e.target.value))} placeholder={placeholder} />;
 }
 
 export default function EstheticianPricingApp() {
@@ -115,52 +99,49 @@ export default function EstheticianPricingApp() {
 
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const activeService = services[selectedIndex] || serviceForm;
-
-  const activeMetrics = useMemo(
-    () =>
-      calcServiceMetrics({
-        ...baseline,
-        service: activeService,
-      }),
-    [baseline, activeService]
-  );
-
   const allServiceMetrics = useMemo(() => {
     return services.map((service) => ({
       service,
-      metrics: calcServiceMetrics({ ...baseline, service }),
+      metrics: calcServiceMetrics(baseline, service),
     }));
   }, [baseline, services]);
+
+  const activeItem = allServiceMetrics[selectedIndex] || allServiceMetrics[0];
+  const activeService = activeItem ? activeItem.service : serviceForm;
+  const activeMetrics = activeItem ? activeItem.metrics : calcServiceMetrics(baseline, serviceForm);
 
   const totals = useMemo(() => {
     const projected = allServiceMetrics.reduce((sum, item) => sum + item.metrics.monthlyIncome, 0);
     const lost = allServiceMetrics.reduce((sum, item) => sum + Math.max(0, item.metrics.lostRevenueMonthly), 0);
-    const current = roundMoney(projected);
-    const gap = roundMoney(baseline.targetIncome - current);
-    const targetProgress = baseline.targetIncome > 0 ? Math.min(100, Math.max(0, (current / baseline.targetIncome) * 100)) : 0;
-    return { projected: current, lost, gap, targetProgress };
+    const gap = baseline.targetIncome - projected;
+    const targetProgress = baseline.targetIncome > 0 ? Math.min(100, Math.max(0, (projected / baseline.targetIncome) * 100)) : 0;
+    return {
+      projected: roundMoney(projected),
+      lost: roundMoney(lost),
+      gap: roundMoney(gap),
+      targetProgress: roundMoney(targetProgress),
+    };
   }, [allServiceMetrics, baseline.targetIncome]);
 
-  const addService = () => {
+  function addService() {
     if (!serviceForm.name.trim()) return;
     setServices((prev) => [...prev, { ...serviceForm }]);
     setSelectedIndex(services.length);
-  };
+  }
 
-  const applyRecommendedPrice = (index: number) => {
+  function applyRecommendedPrice(index) {
     setServices((prev) =>
       prev.map((service, i) => {
         if (i !== index) return service;
-        const recommended = calcServiceMetrics({ ...baseline, service }).recommendedPrice;
+        const recommended = calcServiceMetrics(baseline, service).recommendedPrice;
         return { ...service, price: recommended };
       })
     );
-  };
+  }
 
-  const simulateAllIncrease = (delta: number) => {
+  function simulateAllIncrease(delta) {
     setServices((prev) => prev.map((service) => ({ ...service, price: roundMoney(service.price + delta) })));
-  };
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white p-4 md:p-8">
@@ -196,16 +177,16 @@ export default function EstheticianPricingApp() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>Monthly overhead</Label>
-                  <Input type="number" value={baseline.monthlyOverhead} onChange={(e) => setBaseline((p) => ({ ...p, monthlyOverhead: safeNum(e.target.value) }))} />
+                  <MoneyInput value={baseline.monthlyOverhead} onChange={(v) => setBaseline((p) => ({ ...p, monthlyOverhead: v }))} />
                 </div>
                 <div className="space-y-2">
                   <Label>Target monthly income</Label>
-                  <Input type="number" value={baseline.targetIncome} onChange={(e) => setBaseline((p) => ({ ...p, targetIncome: safeNum(e.target.value) }))} />
+                  <MoneyInput value={baseline.targetIncome} onChange={(v) => setBaseline((p) => ({ ...p, targetIncome: v }))} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Hours per week</Label>
-                    <Input type="number" value={baseline.hoursPerWeek} onChange={(e) => setBaseline((p) => ({ ...p, hoursPerWeek: safeNum(e.target.value) }))} />
+                    <MoneyInput value={baseline.hoursPerWeek} onChange={(v) => setBaseline((p) => ({ ...p, hoursPerWeek: v }))} />
                   </div>
                   <div className="space-y-2">
                     <Label>Weeks per month</Label>
@@ -217,32 +198,32 @@ export default function EstheticianPricingApp() {
 
             <Card className="rounded-3xl border-0 shadow-sm">
               <CardHeader>
-                <CardTitle className="text-xl">Add or update a service</CardTitle>
-                <CardDescription>Keep the form simple so it feels usable, not like accounting software.</CardDescription>
+                <CardTitle className="text-xl">Add a service</CardTitle>
+                <CardDescription>Simple enough to use quickly, detailed enough to be useful.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>Service name</Label>
-                  <Input value={serviceForm.name} onChange={(e) => setServiceForm((p) => ({ ...p, name: e.target.value }))} />
+                  <Input value={serviceForm.name} onChange={(e) => setServiceForm((p) => ({ ...p, name: e.target.value }))} placeholder="Hydrafacial" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Price</Label>
-                    <Input type="number" value={serviceForm.price} onChange={(e) => setServiceForm((p) => ({ ...p, price: safeNum(e.target.value) }))} />
+                    <MoneyInput value={serviceForm.price} onChange={(v) => setServiceForm((p) => ({ ...p, price: v }))} />
                   </div>
                   <div className="space-y-2">
                     <Label>Duration (minutes)</Label>
-                    <Input type="number" value={serviceForm.duration} onChange={(e) => setServiceForm((p) => ({ ...p, duration: safeNum(e.target.value) }))} />
+                    <MoneyInput value={serviceForm.duration} onChange={(v) => setServiceForm((p) => ({ ...p, duration: v }))} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Product cost per client</Label>
-                    <Input type="number" value={serviceForm.productCost} onChange={(e) => setServiceForm((p) => ({ ...p, productCost: safeNum(e.target.value) }))} />
+                    <MoneyInput value={serviceForm.productCost} onChange={(v) => setServiceForm((p) => ({ ...p, productCost: v }))} />
                   </div>
                   <div className="space-y-2">
                     <Label>Clients per week</Label>
-                    <Input type="number" value={serviceForm.clientsPerWeek} onChange={(e) => setServiceForm((p) => ({ ...p, clientsPerWeek: safeNum(e.target.value) }))} />
+                    <MoneyInput value={serviceForm.clientsPerWeek} onChange={(v) => setServiceForm((p) => ({ ...p, clientsPerWeek: v }))} />
                   </div>
                 </div>
                 <Button className="w-full rounded-2xl" onClick={addService}>
@@ -256,9 +237,9 @@ export default function EstheticianPricingApp() {
           <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <MetricCard title="Projected monthly income" value={`$${totals.projected.toLocaleString()}`} subtext="Across all saved services" icon={DollarSign} />
-              <MetricCard title="Target monthly income" value={`$${baseline.targetIncome.toLocaleString()}`} subtext={`Gap: ${totals.gap > 0 ? "-" : "+"}$${Math.abs(totals.gap).toLocaleString()}`} icon={Target} />
+              <MetricCard title="Target income" value={`$${baseline.targetIncome.toLocaleString()}`} subtext={`${totals.gap > 0 ? "Gap" : "Above target"}: $${Math.abs(totals.gap).toLocaleString()}`} icon={Target} />
               <MetricCard title="Lost revenue" value={`$${totals.lost.toLocaleString()}`} subtext="From underpriced services" icon={AlertTriangle} />
-              <MetricCard title="Hours per month" value={`${roundMoney(baseline.hoursPerWeek * baseline.weeksPerMonth)}`} subtext="Used for overhead and income math" icon={Calculator} />
+              <MetricCard title="Hours per month" value={`${roundMoney(baseline.hoursPerWeek * baseline.weeksPerMonth)}`} subtext="Used in the pricing model" icon={Calculator} />
             </div>
 
             <Card className="rounded-3xl border-0 shadow-sm">
@@ -285,7 +266,8 @@ export default function EstheticianPricingApp() {
                   <div className="space-y-3">
                     {allServiceMetrics.map((item, index) => (
                       <button
-                        key={`${item.service.name}-${index}`}
+                        key={item.service.name + index}
+                        type="button"
                         className={`w-full rounded-2xl border p-4 text-left transition hover:shadow-sm ${selectedIndex === index ? "border-slate-900 bg-slate-50" : "bg-white"}`}
                         onClick={() => setSelectedIndex(index)}
                       >
@@ -296,18 +278,22 @@ export default function EstheticianPricingApp() {
                               <p className="font-medium">{item.service.name}</p>
                             </div>
                             <p className="mt-1 text-sm text-muted-foreground">
-                              ${item.service.price} • {item.service.duration} min • {item.service.clientsPerWeek}/week
+                              ${item.service.price} · {item.service.duration} min · {item.service.clientsPerWeek}/week
                             </p>
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant={item.metrics.status.tone}>{item.metrics.status.label}</Badge>
-                            <div className="rounded-xl bg-muted px-3 py-2 text-sm font-medium">
-                              Profit ${item.metrics.profitPerService}
-                            </div>
-                            <div className="rounded-xl bg-muted px-3 py-2 text-sm font-medium">
-                              ${item.metrics.realHourlyRate}/hr
-                            </div>
-                            <Button variant="outline" className="rounded-xl" onClick={(e) => { e.stopPropagation(); applyRecommendedPrice(index); }}>
+                            <Badge variant={item.metrics.status.variant}>{item.metrics.status.label}</Badge>
+                            <div className="rounded-xl bg-muted px-3 py-2 text-sm font-medium">Profit ${item.metrics.profitPerService}</div>
+                            <div className="rounded-xl bg-muted px-3 py-2 text-sm font-medium">${item.metrics.realHourlyRate}/hr</div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="rounded-xl"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                applyRecommendedPrice(index);
+                              }}
+                            >
                               Apply recommended
                             </Button>
                           </div>
@@ -321,7 +307,7 @@ export default function EstheticianPricingApp() {
               <Card className="rounded-3xl border-0 shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-xl">Selected service insight</CardTitle>
-                  <CardDescription>Keep the explanation short and money-focused.</CardDescription>
+                  <CardDescription>Short, direct, and tied to money.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
                   <div className="rounded-2xl border bg-slate-50 p-4">
@@ -334,7 +320,7 @@ export default function EstheticianPricingApp() {
                     <p className="mt-2 text-sm text-muted-foreground">
                       {activeMetrics.underpricingAmount > 5
                         ? `At your current volume, that is about $${Math.max(0, activeMetrics.lostRevenueMonthly).toLocaleString()} in missed monthly income.`
-                        : `This service is not the main pricing problem in the business right now.`}
+                        : `This service is not the main pricing problem right now.`}
                     </p>
                   </div>
 
@@ -358,7 +344,7 @@ export default function EstheticianPricingApp() {
                       <div className="rounded-2xl bg-muted p-4">
                         <p className="text-xs text-muted-foreground">Recommended price</p>
                         <p className="mt-1 text-2xl font-semibold">${activeMetrics.recommendedPrice}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">Based on your saved overhead, target income, and schedule.</p>
+                        <p className="mt-1 text-sm text-muted-foreground">Based on your overhead, income goal, and schedule.</p>
                       </div>
                     </TabsContent>
                     <TabsContent value="pricing" className="mt-4 space-y-3">
@@ -376,7 +362,7 @@ export default function EstheticianPricingApp() {
                       </div>
                     </TabsContent>
                     <TabsContent value="math" className="mt-4 space-y-3 text-sm">
-                      <div className="rounded-2xl bg-muted p-4">
+                      <div className="rounded-2xl bg-muted p-4 space-y-1">
                         <p>Overhead per service: <span className="font-semibold">${activeMetrics.overheadPerService}</span></p>
                         <p>Total cost per service: <span className="font-semibold">${activeMetrics.totalCost}</span></p>
                         <p>Profit per service: <span className="font-semibold">${activeMetrics.profitPerService}</span></p>
@@ -384,22 +370,6 @@ export default function EstheticianPricingApp() {
                       </div>
                     </TabsContent>
                   </Tabs>
-
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button className="w-full rounded-2xl">See upgrade path</Button>
-                    </DialogTrigger>
-                    <DialogContent className="rounded-3xl">
-                      <DialogHeader>
-                        <DialogTitle>How this becomes a SaaS</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-3 text-sm text-muted-foreground">
-                        <p>Free plan: 1 saved service, pricing check, and one recommendation.</p>
-                        <p>Pro plan: unlimited services, weekly income tracking, missed revenue alerts, and pricing scenario planning.</p>
-                        <p>Next sticky feature: weekly target tracking so they come back regularly, not once.</p>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
                 </CardContent>
               </Card>
             </div>

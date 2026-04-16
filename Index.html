@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Pricing Reality Check</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #f4f4f4;
+      padding: 40px;
+      max-width: 600px;
+      margin: auto;
+    }
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      margin-bottom: 15px;
+    }
+    button {
+      padding: 15px;
+      width: 100%;
+      background: black;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+    .result {
+      font-size: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Pricing Reality Check</h1>
+
+<div class="card">
+  <label>Service Price</label>
+  <input id="price" value="85">
+
+  <label>Service Minutes</label>
+  <input id="minutes" value="60">
+
+  <label>Product Cost Per Service</label>
+  <input id="product" value="8">
+
+  <label>Monthly Overhead</label>
+  <input id="overhead" value="1200">
+
+  <label>Clients Per Month</label>
+  <input id="clients" value="60">
+
+  <label>Desired Hourly Income</label>
+  <input id="hourly" value="50">
+
+  <button onclick="calculate()">Calculate</button>
+</div>
+
+<div class="card">
+  <div class="result" id="minPrice"></div>
+  <div class="result" id="recommended"></div>
+  <div class="result" id="hourlyReal"></div>
+</div>
+
+<script>
+function calculate() {
+  let price = Number(document.getElementById("price").value);
+  let minutes = Number(document.getElementById("minutes").value);
+  let product = Number(document.getElementById("product").value);
+  let overhead = Number(document.getElementById("overhead").value);
+  let clients = Number(document.getElementById("clients").value);
+  let hourly = Number(document.getElementById("hourly").value);
+
+  let overheadPer = overhead / clients;
+  let hours = minutes / 60;
+
+  let minPrice = product + overheadPer;
+  let recommended = minPrice + (hourly * hours);
+  let realHourly = (price - minPrice) / hours;
+
+  document.getElementById("minPrice").innerText =
+    "Minimum Price: $" + minPrice.toFixed(2);
+
+  document.getElementById("recommended").innerText =
+    "Recommended Price: $" + recommended.toFixed(2);
+
+  document.getElementById("hourlyReal").innerText =
+    "Your Real Hourly: $" + realHourly.toFixed(2);
+}
+</script>
+
+</body>
+</html>
